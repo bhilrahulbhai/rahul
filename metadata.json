@@ -1,0 +1,5 @@
+{
+  "name": "BhaktiSagar",
+  "description": "A divine space to discover bhajans, devotional photos, sacred stories, and spiritual books.",
+  "requestFramePermissions": ["microphone"]
+}
