@@ -32,6 +32,22 @@
   @apply list-disc mb-1;
 }
 
+.markdown-body strong {
+  @apply font-bold text-bhakti-accent;
+}
+
+.markdown-body em {
+  @apply italic text-gray-400;
+}
+
+.markdown-body code {
+  @apply bg-white/10 px-1 rounded text-xs font-mono;
+}
+
+.markdown-body blockquote {
+  @apply border-l-2 border-bhakti-accent/50 pl-3 italic text-gray-400 my-2;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

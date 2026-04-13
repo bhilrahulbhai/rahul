@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Mail, Sparkles, Lock, ArrowRight } from 'lucide-react';
 
@@ -12,9 +12,81 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [config, setConfig] = useState<{ 
+    googleClientId: string | null, 
+    isConfigured: boolean 
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/auth/config');
+        const data = await res.json();
+        setConfig(data);
+      } catch (err) {
+        console.error('Failed to fetch auth config:', err);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        onLogin(event.data.user);
+        onClose();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onLogin, onClose]);
+
+  const handleGuestLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/guest', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Guest login failed');
+      onLogin(data);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!config?.googleClientId) {
+      setError('Google Login is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your environment variables.');
+      return;
+    }
+    setError('');
+    const popup = window.open('about:blank', 'google_login', 'width=500,height=600');
+    if (!popup) {
+      setError('Popup blocked! Please allow popups for this site.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/google/url');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to get Google auth URL');
+      if (!data.url) throw new Error('No URL returned from server');
+      
+      // Use location.replace to avoid history issues
+      popup.location.replace(data.url);
+    } catch (err: any) {
+      console.error('Failed to get Google auth URL:', err);
+      setError(err.message || 'Failed to initialize Google login');
+      popup.close();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +94,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     setError('');
     
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-    const body = isLogin ? { email, password } : { email, name, password };
+    const body = isLogin ? { email, password } : { email, name, username, password };
 
     try {
       const response = await fetch(endpoint, {
@@ -89,30 +161,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-4">
                   {!isLogin && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                        <User className="w-4 h-4" /> Full Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter your name"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 focus:outline-none focus:border-bhakti-accent transition-all"
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                          <User className="w-4 h-4" /> Full Name
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Enter your name"
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 focus:outline-none focus:border-bhakti-accent transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                          <User className="w-4 h-4" /> Username
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">@</span>
+                          <input
+                            type="text"
+                            required
+                            minLength={3}
+                            maxLength={20}
+                            pattern="^[a-z0-9_]+$"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                            placeholder="username"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-9 pr-4 focus:outline-none focus:border-bhakti-accent transition-all"
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-500 px-2">3-20 characters, lowercase, numbers and underscores only</p>
+                      </div>
+                    </>
                   )}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                      <Mail className="w-4 h-4" /> Email Address
+                      <Mail className="w-4 h-4" /> Email or Username
                     </label>
                     <input
-                      type="email"
+                      type="text"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder="you@example.com or username"
                       className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 focus:outline-none focus:border-bhakti-accent transition-all"
                     />
                   </div>
@@ -145,7 +239,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                     </>
                   )}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleGuestLogin}
+                  disabled={isLoading}
+                  className="w-full py-4 bg-white/10 border border-white/20 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all flex items-center justify-center gap-3 text-white shadow-xl"
+                >
+                  <Sparkles className="w-5 h-5 text-bhakti-accent" />
+                  Quick Access (Guest)
+                </button>
               </form>
+
+              <div className="space-y-3">
+                <button
+                  onClick={handleGoogleLogin}
+                  className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-medium hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+                  title="Google Login"
+                >
+                  <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+                  <span>Continue with Google</span>
+                </button>
+              </div>
 
               <div className="text-center space-y-4">
                 <button
