@@ -39,179 +39,181 @@ const upload = multer({
 });
 
 // Initialize Database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS content (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    type TEXT NOT NULL,
-    url TEXT NOT NULL,
-    thumbnail TEXT,
-    author TEXT NOT NULL,
-    author_id INTEGER,
-    likes INTEGER DEFAULT 0,
-    views INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (author_id) REFERENCES users(id)
-  );
-`);
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS content (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      type TEXT NOT NULL,
+      url TEXT NOT NULL,
+      thumbnail TEXT,
+      author TEXT NOT NULL,
+      author_id INTEGER,
+      likes INTEGER DEFAULT 0,
+      views INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (author_id) REFERENCES users(id)
+    );
+  `);
 
-// Migration: Add status column if it doesn't exist
-const tableInfo = db.prepare("PRAGMA table_info(content)").all() as any[];
-const hasStatus = tableInfo.some(col => col.name === 'status');
-if (!hasStatus) {
-  console.log("Adding status column to content table...");
-  db.exec("ALTER TABLE content ADD COLUMN status TEXT DEFAULT 'pending'");
-  // Update existing content to approved
-  db.exec("UPDATE content SET status = 'approved'");
+  // Migration: Add status column if it doesn't exist
+  const tableInfo = db.prepare("PRAGMA table_info(content)").all() as any[];
+  const hasStatus = tableInfo.some(col => col.name === 'status');
+  if (!hasStatus) {
+    console.log("Adding status column to content table...");
+    db.exec("ALTER TABLE content ADD COLUMN status TEXT DEFAULT 'pending'");
+    db.exec("UPDATE content SET status = 'approved'");
+  }
+
+  const hasAuthorId = tableInfo.some(col => col.name === 'author_id');
+  if (!hasAuthorId) {
+    console.log("Adding author_id column to content table...");
+    db.exec("ALTER TABLE content ADD COLUMN author_id INTEGER");
+  }
+
+  const hasViews = tableInfo.some(col => col.name === 'views');
+  if (!hasViews) {
+    console.log("Adding views column to content table...");
+    db.exec("ALTER TABLE content ADD COLUMN views INTEGER DEFAULT 0");
+  }
+
+  // Migration: Add password column to users if it doesn't exist
+  const userTableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
+  const hasPassword = userTableInfo.some(col => col.name === 'password');
+  if (!hasPassword && userTableInfo.length > 0) {
+    console.log("Adding password column to users table...");
+    db.exec("ALTER TABLE users ADD COLUMN password TEXT DEFAULT 'temporary_password'");
+  }
+
+  const hasGoogleId = userTableInfo.some(col => col.name === 'google_id');
+  if (!hasGoogleId && userTableInfo.length > 0) {
+    console.log("Adding google_id column to users table...");
+    db.exec("ALTER TABLE users ADD COLUMN google_id TEXT");
+  }
+
+  const hasGithubId = userTableInfo.some(col => col.name === 'github_id');
+  if (!hasGithubId && userTableInfo.length > 0) {
+    console.log("Adding github_id column to users table...");
+    db.exec("ALTER TABLE users ADD COLUMN github_id TEXT");
+  }
+
+  const hasMicrosoftId = userTableInfo.some(col => col.name === 'microsoft_id');
+  if (!hasMicrosoftId && userTableInfo.length > 0) {
+    console.log("Adding microsoft_id column to users table...");
+    db.exec("ALTER TABLE users ADD COLUMN microsoft_id TEXT");
+  }
+
+  const hasUsername = userTableInfo.some(col => col.name === 'username');
+  if (!hasUsername && userTableInfo.length > 0) {
+    console.log("Adding username column to users table...");
+    db.exec("ALTER TABLE users ADD COLUMN username TEXT UNIQUE");
+  }
+
+  const hasBio = userTableInfo.some(col => col.name === 'bio');
+  if (!hasBio && userTableInfo.length > 0) {
+    console.log("Adding bio column to users table...");
+    db.exec("ALTER TABLE users ADD COLUMN bio TEXT");
+  }
+
+  // Migration: Add avatar column to comments if it doesn't exist
+  const commentTableInfo = db.prepare("PRAGMA table_info(comments)").all() as any[];
+  const hasCommentAvatar = commentTableInfo.some(col => col.name === 'avatar');
+  if (!hasCommentAvatar && commentTableInfo.length > 0) {
+    console.log("Adding avatar column to comments table...");
+    db.exec("ALTER TABLE comments ADD COLUMN avatar TEXT");
+  }
+
+  // Migration: Add sender_username to messages if it doesn't exist
+  const messageTableInfo = db.prepare("PRAGMA table_info(messages)").all() as any[];
+  const hasSenderUsername = messageTableInfo.some(col => col.name === 'sender_username');
+  if (!hasSenderUsername && messageTableInfo.length > 0) {
+    console.log("Adding sender_username column to messages table...");
+    db.exec("ALTER TABLE messages ADD COLUMN sender_username TEXT");
+  }
+
+  const friendTableInfo = db.prepare("PRAGMA table_info(friends)").all() as any[];
+  const hasRequesterId = friendTableInfo.some(col => col.name === 'requester_id');
+  if (!hasRequesterId && friendTableInfo.length > 0) {
+    console.log("Adding requester_id column to friends table...");
+    db.exec("ALTER TABLE friends ADD COLUMN requester_id INTEGER");
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content_id INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      author TEXT NOT NULL,
+      avatar TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (content_id) REFERENCES content(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      username TEXT UNIQUE,
+      password TEXT,
+      name TEXT NOT NULL,
+      avatar TEXT,
+      bio TEXT,
+      google_id TEXT UNIQUE,
+      github_id TEXT UNIQUE,
+      microsoft_id TEXT UNIQUE,
+      favorite_deity TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS user_library (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      content_id INTEGER NOT NULL,
+      type TEXT NOT NULL, -- 'history', 'liked', 'watch_later'
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (content_id) REFERENCES content(id),
+      UNIQUE(user_id, content_id, type)
+    );
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sender_id INTEGER NOT NULL,
+      sender_name TEXT NOT NULL,
+      sender_username TEXT,
+      sender_avatar TEXT,
+      text TEXT,
+      content_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sender_id) REFERENCES users(id),
+      FOREIGN KEY (content_id) REFERENCES content(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS friends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id1 INTEGER NOT NULL,
+      user_id2 INTEGER NOT NULL,
+      status TEXT NOT NULL, -- 'pending', 'accepted'
+      requester_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id1) REFERENCES users(id),
+      FOREIGN KEY (user_id2) REFERENCES users(id),
+      UNIQUE(user_id1, user_id2)
+    );
+
+    CREATE TABLE IF NOT EXISTS private_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sender_id INTEGER NOT NULL,
+      receiver_id INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sender_id) REFERENCES users(id),
+      FOREIGN KEY (receiver_id) REFERENCES users(id)
+    );
+  `);
+} catch (err) {
+  console.error("Database initialization failed:", err);
 }
-
-const hasAuthorId = tableInfo.some(col => col.name === 'author_id');
-if (!hasAuthorId) {
-  console.log("Adding author_id column to content table...");
-  db.exec("ALTER TABLE content ADD COLUMN author_id INTEGER");
-}
-
-const hasViews = tableInfo.some(col => col.name === 'views');
-if (!hasViews) {
-  console.log("Adding views column to content table...");
-  db.exec("ALTER TABLE content ADD COLUMN views INTEGER DEFAULT 0");
-}
-
-// Migration: Add password column to users if it doesn't exist
-const userTableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
-const hasPassword = userTableInfo.some(col => col.name === 'password');
-if (!hasPassword && userTableInfo.length > 0) {
-  console.log("Adding password column to users table...");
-  // Since we can't add NOT NULL without default to existing table
-  db.exec("ALTER TABLE users ADD COLUMN password TEXT DEFAULT 'temporary_password'");
-}
-
-const hasGoogleId = userTableInfo.some(col => col.name === 'google_id');
-if (!hasGoogleId && userTableInfo.length > 0) {
-  console.log("Adding google_id column to users table...");
-  db.exec("ALTER TABLE users ADD COLUMN google_id TEXT");
-}
-
-const hasGithubId = userTableInfo.some(col => col.name === 'github_id');
-if (!hasGithubId && userTableInfo.length > 0) {
-  console.log("Adding github_id column to users table...");
-  db.exec("ALTER TABLE users ADD COLUMN github_id TEXT");
-}
-
-const hasMicrosoftId = userTableInfo.some(col => col.name === 'microsoft_id');
-if (!hasMicrosoftId && userTableInfo.length > 0) {
-  console.log("Adding microsoft_id column to users table...");
-  db.exec("ALTER TABLE users ADD COLUMN microsoft_id TEXT");
-}
-
-const hasUsername = userTableInfo.some(col => col.name === 'username');
-if (!hasUsername && userTableInfo.length > 0) {
-  console.log("Adding username column to users table...");
-  db.exec("ALTER TABLE users ADD COLUMN username TEXT UNIQUE");
-}
-
-const hasBio = userTableInfo.some(col => col.name === 'bio');
-if (!hasBio && userTableInfo.length > 0) {
-  console.log("Adding bio column to users table...");
-  db.exec("ALTER TABLE users ADD COLUMN bio TEXT");
-}
-
-// Migration: Add avatar column to comments if it doesn't exist
-const commentTableInfo = db.prepare("PRAGMA table_info(comments)").all() as any[];
-const hasCommentAvatar = commentTableInfo.some(col => col.name === 'avatar');
-if (!hasCommentAvatar && commentTableInfo.length > 0) {
-  console.log("Adding avatar column to comments table...");
-  db.exec("ALTER TABLE comments ADD COLUMN avatar TEXT");
-}
-
-// Migration: Add sender_username to messages if it doesn't exist
-const messageTableInfo = db.prepare("PRAGMA table_info(messages)").all() as any[];
-const hasSenderUsername = messageTableInfo.some(col => col.name === 'sender_username');
-if (!hasSenderUsername && messageTableInfo.length > 0) {
-  console.log("Adding sender_username column to messages table...");
-  db.exec("ALTER TABLE messages ADD COLUMN sender_username TEXT");
-}
-
-const friendTableInfo = db.prepare("PRAGMA table_info(friends)").all() as any[];
-const hasRequesterId = friendTableInfo.some(col => col.name === 'requester_id');
-if (!hasRequesterId && friendTableInfo.length > 0) {
-  console.log("Adding requester_id column to friends table...");
-  db.exec("ALTER TABLE friends ADD COLUMN requester_id INTEGER");
-}
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    content_id INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    author TEXT NOT NULL,
-    avatar TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (content_id) REFERENCES content(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    username TEXT UNIQUE,
-    password TEXT,
-    name TEXT NOT NULL,
-    avatar TEXT,
-    bio TEXT,
-    google_id TEXT UNIQUE,
-    github_id TEXT UNIQUE,
-    microsoft_id TEXT UNIQUE,
-    favorite_deity TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS user_library (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    content_id INTEGER NOT NULL,
-    type TEXT NOT NULL, -- 'history', 'liked', 'watch_later'
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (content_id) REFERENCES content(id),
-    UNIQUE(user_id, content_id, type)
-  );
-
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sender_id INTEGER NOT NULL,
-    sender_name TEXT NOT NULL,
-    sender_username TEXT,
-    sender_avatar TEXT,
-    text TEXT,
-    content_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES users(id),
-    FOREIGN KEY (content_id) REFERENCES content(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS friends (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id1 INTEGER NOT NULL,
-    user_id2 INTEGER NOT NULL,
-    status TEXT NOT NULL, -- 'pending', 'accepted'
-    requester_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id1) REFERENCES users(id),
-    FOREIGN KEY (user_id2) REFERENCES users(id),
-    UNIQUE(user_id1, user_id2)
-  );
-
-  CREATE TABLE IF NOT EXISTS private_messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sender_id INTEGER NOT NULL,
-    receiver_id INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES users(id),
-    FOREIGN KEY (receiver_id) REFERENCES users(id)
-  );
-`);
 
 // Seed initial data if empty
 const count = db.prepare("SELECT count(*) as count FROM content").get() as { count: number };
@@ -233,6 +235,10 @@ async function startServer() {
     }
   });
   const PORT = 3000;
+
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", time: new Date().toISOString() });
+  });
 
   // Chat state (last 50 messages)
   const getMessages = () => {
@@ -288,6 +294,7 @@ async function startServer() {
   });
 
   app.set('trust proxy', true);
+  console.log("Configuring middleware...");
   app.use(express.json());
   app.use(cookieParser());
   app.use(session({
@@ -796,8 +803,10 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+});
