@@ -103,7 +103,11 @@ try {
     console.log("Adding bio column to users table...");
     db.exec("ALTER TABLE users ADD COLUMN bio TEXT");
   }
-
+   const hasRole = userTableInfo.some(col => col.name === 'role');
+if (!hasRole && userTableInfo.length > 0) {
+  console.log("Adding role column to users table...");
+  db.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
+}
   // Migration: Add avatar column to comments if it doesn't exist
   const commentTableInfo = db.prepare("PRAGMA table_info(comments)").all() as any[];
   const hasCommentAvatar = commentTableInfo.some(col => col.name === 'avatar');
@@ -147,6 +151,7 @@ try {
       avatar TEXT,
       bio TEXT,
       google_id TEXT UNIQUE,
+      role TEXT DEFAULT 'user',
       favorite_deity TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -359,9 +364,21 @@ async function startServer() {
     const userId = (req.session as any).userId;
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
-    const user = db.prepare("SELECT id, email, name, username, avatar, bio, favorite_deity FROM users WHERE id = ?").get(userId);
+    const user = db.prepare("SELECT id, email, name, username, avatar, bio, favorite_deity, role FROM users WHERE id = ?").get(userId);
     res.json(user);
   });
+  app.get("/api/debug/users", (req, res) => {
+  try {
+    const users = db.prepare(
+      "SELECT id, email, name, username, google_id, role, created_at FROM users"
+    ).all();
+
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
 
   app.post("/api/user/update", (req, res) => {
     const userId = (req.session as any).userId;
@@ -587,18 +604,32 @@ async function startServer() {
 
       let user = db.prepare("SELECT * FROM users WHERE google_id = ? OR email = ?").get(userInfo.sub, userInfo.email) as any;
 
-      if (!user) {
-        const result = db.prepare("INSERT INTO users (email, name, avatar, google_id) VALUES (?, ?, ?, ?)").run(
-          userInfo.email,
-          userInfo.name,
-          userInfo.picture,
-          userInfo.sub
-        );
-        user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
-      } else if (!user.google_id) {
-        db.prepare("UPDATE users SET google_id = ?, avatar = ? WHERE id = ?").run(userInfo.sub, userInfo.picture, user.id);
-        user = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id);
-      }
+      const role = userInfo.email?.toLowerCase() === "bhilrahul976@gmail.com" ? "admin" : "user";
+
+if (!user) {
+  const result = db.prepare(
+    "INSERT INTO users (email, name, avatar, google_id, role) VALUES (?, ?, ?, ?, ?)"
+  ).run(
+    userInfo.email,
+    userInfo.name,
+    userInfo.picture,
+    userInfo.sub,
+    role
+  );
+
+  user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
+} else {
+  db.prepare(
+    "UPDATE users SET google_id = ?, avatar = ?, role = ? WHERE id = ?"
+  ).run(
+    userInfo.sub,
+    userInfo.picture,
+    role,
+    user.id
+  );
+
+  user = db.prepare("SELECT * FROM users WHERE id = ?").get(user.id);
+}
 
       (req.session as any).userId = user.id;
 
