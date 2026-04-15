@@ -92,18 +92,6 @@ try {
     db.exec("ALTER TABLE users ADD COLUMN google_id TEXT");
   }
 
-  const hasGithubId = userTableInfo.some(col => col.name === 'github_id');
-  if (!hasGithubId && userTableInfo.length > 0) {
-    console.log("Adding github_id column to users table...");
-    db.exec("ALTER TABLE users ADD COLUMN github_id TEXT");
-  }
-
-  const hasMicrosoftId = userTableInfo.some(col => col.name === 'microsoft_id');
-  if (!hasMicrosoftId && userTableInfo.length > 0) {
-    console.log("Adding microsoft_id column to users table...");
-    db.exec("ALTER TABLE users ADD COLUMN microsoft_id TEXT");
-  }
-
   const hasUsername = userTableInfo.some(col => col.name === 'username');
   if (!hasUsername && userTableInfo.length > 0) {
     console.log("Adding username column to users table...");
@@ -159,8 +147,6 @@ try {
       avatar TEXT,
       bio TEXT,
       google_id TEXT UNIQUE,
-      github_id TEXT UNIQUE,
-      microsoft_id TEXT UNIQUE,
       favorite_deity TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -216,13 +202,17 @@ try {
 }
 
 // Seed initial data if empty
-const count = db.prepare("SELECT count(*) as count FROM content").get() as { count: number };
-if (count.count === 0) {
-  const insert = db.prepare("INSERT INTO content (title, description, type, url, thumbnail, author, likes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-  insert.run("Achyutam Keshavan Krishna Damodaram", "A beautiful bhajan dedicated to Lord Krishna, bringing peace and serenity to the soul.", "video", "https://www.youtube.com/embed/dQw4w9WgXcQ", "https://picsum.photos/seed/bhajan1/800/450", "Krishna Devotee", 1200, "approved");
-  insert.run("Divine Morning Aarti", "Experience the divine energy of the morning aarti.", "reel", "https://assets.mixkit.co/videos/preview/mixkit-meditation-in-the-mountains-4453-large.mp4", "https://picsum.photos/seed/reel1/400/700", "Bhakti Channel", 5400, "approved");
-  insert.run("Morning Spiritual Vibes", "Start your day with these divine visuals and sacred energy.", "photo", "https://picsum.photos/seed/spirit1/800/1200", "https://picsum.photos/seed/spirit1/400/600", "Sadhaka", 850, "approved");
-  insert.run("The Story of Hanuman", "An inspiring tale of devotion, strength, and the legendary leap of faith by Lord Hanuman.", "story", "#", "https://picsum.photos/seed/hanuman/400/300", "Puranic Tales", 2100, "approved");
+try {
+  const count = db.prepare("SELECT count(*) as count FROM content").get() as { count: number };
+  if (count.count === 0) {
+    const insert = db.prepare("INSERT INTO content (title, description, type, url, thumbnail, author, likes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    insert.run("Achyutam Keshavan Krishna Damodaram", "A beautiful bhajan dedicated to Lord Krishna, bringing peace and serenity to the soul.", "video", "https://www.youtube.com/embed/dQw4w9WgXcQ", "https://picsum.photos/seed/bhajan1/800/450", "Krishna Devotee", 1200, "approved");
+    insert.run("Divine Morning Aarti", "Experience the divine energy of the morning aarti.", "reel", "https://assets.mixkit.co/videos/preview/mixkit-meditation-in-the-mountains-4453-large.mp4", "https://picsum.photos/seed/reel1/400/700", "Bhakti Channel", 5400, "approved");
+    insert.run("Morning Spiritual Vibes", "Start your day with these divine visuals and sacred energy.", "photo", "https://picsum.photos/seed/spirit1/800/1200", "https://picsum.photos/seed/spirit1/400/600", "Sadhaka", 850, "approved");
+    insert.run("The Story of Hanuman", "An inspiring tale of devotion, strength, and the legendary leap of faith by Lord Hanuman.", "story", "#", "https://picsum.photos/seed/hanuman/400/300", "Puranic Tales", 2100, "approved");
+  }
+} catch (err) {
+  console.error("Seeding failed:", err);
 }
 
 async function startServer() {
