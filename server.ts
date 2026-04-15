@@ -381,7 +381,7 @@ async function startServer() {
     const user = db.prepare("SELECT id, email, name, username, avatar, bio, favorite_deity, role FROM users WHERE id = ?").get(userId);
     res.json(user);
   });
-  app.get("/api/debug/users", (req, res) => {
+  app.get("/api/debug/users", requireAdmin, (req, res) => {
   try {
     const users = db.prepare(
       "SELECT id, email, name, username, google_id, role, created_at FROM users"
@@ -748,7 +748,7 @@ if (!user) {
     res.json(content);
   });
 
-  app.patch("/api/content/:id/status", (req, res) => {
+  app.patch("/api/content/:id/status", requireAdmin, (req, res) => {
     const { id } = req.params;
     const { status } = req.body; // 'approved' or 'rejected'
     if (!['approved', 'rejected'].includes(status)) {
@@ -759,6 +759,9 @@ if (!user) {
   });
 
   app.post("/api/content", (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
     const { title, description, type, url, thumbnail, author } = req.body;
     if (!title || !type || !url || !author) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -781,7 +784,7 @@ if (!user) {
     }
 
     const insert = db.prepare("INSERT INTO content (title, description, type, url, thumbnail, author, author_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    const result = insert.run(title, description || "", type, finalUrl, thumbnail || `https://picsum.photos/seed/${Math.random()}/800/450`, author, (req.session as any).userId || null, 'pending');
+    const result = insert.run(title, description || "", type, finalUrl, thumbnail || `https://picsum.photos/seed/${Math.random()}/800/450`, author, userId, 'pending');
     res.json({ id: result.lastInsertRowid });
   });
 
