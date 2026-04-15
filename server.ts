@@ -359,7 +359,21 @@ async function startServer() {
       res.json({ success: true });
     });
   });
+   function requireAdmin(req, res, next) {
+  const userId = (req.session as any).userId;
 
+  if (!userId) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const user = db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as any;
+
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+
+  next();
+}
   app.get("/api/auth/me", (req, res) => {
     const userId = (req.session as any).userId;
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
@@ -378,6 +392,9 @@ async function startServer() {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch users" });
   }
+});
+app.get("/api/admin/test", requireAdmin, (req, res) => {
+  res.json({ success: true, message: "Welcome admin" });
 });
 
   app.post("/api/user/update", (req, res) => {
