@@ -311,6 +311,23 @@ const UploadModal = ({ isOpen, onClose, onUpload, user }: { isOpen: boolean, onC
       setFormData(prev => ({ ...prev, author: user.name }));
     }
   }, [user]);
+
+  useEffect(() => {
+    if (formData.url && (formData.url.includes('youtube.com') || formData.url.includes('youtu.be'))) {
+      let videoId = '';
+      if (formData.url.includes('v=')) {
+        videoId = formData.url.split('v=')[1].split('&')[0];
+      } else if (formData.url.includes('youtu.be/')) {
+        videoId = formData.url.split('youtu.be/')[1].split('?')[0];
+      } else if (formData.url.includes('embed/')) {
+        videoId = formData.url.split('embed/')[1].split('?')[0];
+      }
+      
+      if (videoId && !formData.thumbnail) {
+        setFormData(prev => ({ ...prev, thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }));
+      }
+    }
+  }, [formData.url]);
   const [isUploading, setIsUploading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadMode, setUploadMode] = useState<'url' | 'file'>('url');
