@@ -52,94 +52,10 @@ try {
       author_id INTEGER,
       likes INTEGER DEFAULT 0,
       views INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      is_featured INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (author_id) REFERENCES users(id)
-    );
-  `);
-
-  // Migration: Add status column if it doesn't exist
-  const tableInfo = db.prepare("PRAGMA table_info(content)").all() as any[];
-  const hasStatus = tableInfo.some(col => col.name === 'status');
-  if (!hasStatus) {
-    console.log("Adding status column to content table...");
-    db.exec("ALTER TABLE content ADD COLUMN status TEXT DEFAULT 'pending'");
-    db.exec("UPDATE content SET status = 'approved'");
-  }
-
-  const hasAuthorId = tableInfo.some(col => col.name === 'author_id');
-  if (!hasAuthorId) {
-    console.log("Adding author_id column to content table...");
-    db.exec("ALTER TABLE content ADD COLUMN author_id INTEGER");
-  }
-
-  const hasViews = tableInfo.some(col => col.name === 'views');
-  if (!hasViews) {
-    console.log("Adding views column to content table...");
-    db.exec("ALTER TABLE content ADD COLUMN views INTEGER DEFAULT 0");
-  }
-
-  // Migration: Add password column to users if it doesn't exist
-  const userTableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
-  const hasPassword = userTableInfo.some(col => col.name === 'password');
-  if (!hasPassword && userTableInfo.length > 0) {
-    console.log("Adding password column to users table...");
-    db.exec("ALTER TABLE users ADD COLUMN password TEXT DEFAULT 'temporary_password'");
-  }
-
-  const hasGoogleId = userTableInfo.some(col => col.name === 'google_id');
-  if (!hasGoogleId && userTableInfo.length > 0) {
-    console.log("Adding google_id column to users table...");
-    db.exec("ALTER TABLE users ADD COLUMN google_id TEXT");
-  }
-
-  const hasUsername = userTableInfo.some(col => col.name === 'username');
-  if (!hasUsername && userTableInfo.length > 0) {
-    console.log("Adding username column to users table...");
-    db.exec("ALTER TABLE users ADD COLUMN username TEXT UNIQUE");
-  }
-
-  const hasBio = userTableInfo.some(col => col.name === 'bio');
-  if (!hasBio && userTableInfo.length > 0) {
-    console.log("Adding bio column to users table...");
-    db.exec("ALTER TABLE users ADD COLUMN bio TEXT");
-  }
-   const hasRole = userTableInfo.some(col => col.name === 'role');
-if (!hasRole && userTableInfo.length > 0) {
-  console.log("Adding role column to users table...");
-  db.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
-}
-  // Migration: Add avatar column to comments if it doesn't exist
-  const commentTableInfo = db.prepare("PRAGMA table_info(comments)").all() as any[];
-  const hasCommentAvatar = commentTableInfo.some(col => col.name === 'avatar');
-  if (!hasCommentAvatar && commentTableInfo.length > 0) {
-    console.log("Adding avatar column to comments table...");
-    db.exec("ALTER TABLE comments ADD COLUMN avatar TEXT");
-  }
-
-  // Migration: Add sender_username to messages if it doesn't exist
-  const messageTableInfo = db.prepare("PRAGMA table_info(messages)").all() as any[];
-  const hasSenderUsername = messageTableInfo.some(col => col.name === 'sender_username');
-  if (!hasSenderUsername && messageTableInfo.length > 0) {
-    console.log("Adding sender_username column to messages table...");
-    db.exec("ALTER TABLE messages ADD COLUMN sender_username TEXT");
-  }
-
-  const friendTableInfo = db.prepare("PRAGMA table_info(friends)").all() as any[];
-  const hasRequesterId = friendTableInfo.some(col => col.name === 'requester_id');
-  if (!hasRequesterId && friendTableInfo.length > 0) {
-    console.log("Adding requester_id column to friends table...");
-    db.exec("ALTER TABLE friends ADD COLUMN requester_id INTEGER");
-  }
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS comments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      content_id INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      author TEXT NOT NULL,
-      avatar TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (content_id) REFERENCES content(id)
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -152,8 +68,19 @@ if (!hasRole && userTableInfo.length > 0) {
       bio TEXT,
       google_id TEXT UNIQUE,
       role TEXT DEFAULT 'user',
+      status TEXT DEFAULT 'active',
       favorite_deity TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content_id INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      author TEXT NOT NULL,
+      avatar TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (content_id) REFERENCES content(id)
     );
 
     CREATE TABLE IF NOT EXISTS user_library (
@@ -201,7 +128,76 @@ if (!hasRole && userTableInfo.length > 0) {
       FOREIGN KEY (sender_id) REFERENCES users(id),
       FOREIGN KEY (receiver_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id INTEGER NOT NULL,
+      target_type TEXT NOT NULL, -- 'content', 'user', 'comment', 'message'
+      target_id INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      status TEXT DEFAULT 'pending', -- 'pending', 'resolved', 'dismissed'
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (reporter_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  // Migrations
+  const tableInfo = db.prepare("PRAGMA table_info(content)").all() as any[];
+  const userTableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
+  const commentTableInfo = db.prepare("PRAGMA table_info(comments)").all() as any[];
+  const messageTableInfo = db.prepare("PRAGMA table_info(messages)").all() as any[];
+  const friendTableInfo = db.prepare("PRAGMA table_info(friends)").all() as any[];
+
+  // Content Migrations
+  if (!tableInfo.some(col => col.name === 'status')) {
+    db.exec("ALTER TABLE content ADD COLUMN status TEXT DEFAULT 'pending'");
+    db.exec("UPDATE content SET status = 'approved'");
+  }
+  if (!tableInfo.some(col => col.name === 'is_featured')) {
+    db.exec("ALTER TABLE content ADD COLUMN is_featured INTEGER DEFAULT 0");
+  }
+  if (!tableInfo.some(col => col.name === 'author_id')) {
+    db.exec("ALTER TABLE content ADD COLUMN author_id INTEGER");
+  }
+  if (!tableInfo.some(col => col.name === 'views')) {
+    db.exec("ALTER TABLE content ADD COLUMN views INTEGER DEFAULT 0");
+  }
+
+  // User Migrations
+  if (!userTableInfo.some(col => col.name === 'password')) {
+    db.exec("ALTER TABLE users ADD COLUMN password TEXT");
+  }
+  if (!userTableInfo.some(col => col.name === 'google_id')) {
+    db.exec("ALTER TABLE users ADD COLUMN google_id TEXT");
+  }
+  if (!userTableInfo.some(col => col.name === 'username')) {
+    db.exec("ALTER TABLE users ADD COLUMN username TEXT UNIQUE");
+  }
+  if (!userTableInfo.some(col => col.name === 'bio')) {
+    db.exec("ALTER TABLE users ADD COLUMN bio TEXT");
+  }
+  if (!userTableInfo.some(col => col.name === 'role')) {
+    db.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
+  }
+  if (!userTableInfo.some(col => col.name === 'status')) {
+    db.exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'");
+  }
+
+  // Other Migrations
+  if (!commentTableInfo.some(col => col.name === 'avatar')) {
+    db.exec("ALTER TABLE comments ADD COLUMN avatar TEXT");
+  }
+  if (!messageTableInfo.some(col => col.name === 'sender_username')) {
+    db.exec("ALTER TABLE messages ADD COLUMN sender_username TEXT");
+  }
+  if (!friendTableInfo.some(col => col.name === 'requester_id')) {
+    db.exec("ALTER TABLE friends ADD COLUMN requester_id INTEGER");
+  }
 } catch (err) {
   console.error("Database initialization failed:", err);
 }
@@ -349,6 +345,10 @@ async function startServer() {
       return res.status(401).json({ error: "Invalid credentials. If you don't have an account, please sign up." });
     }
 
+    if (user.status === 'banned') {
+      return res.status(403).json({ error: "Your account has been banned. Please contact support." });
+    }
+
     (req.session as any).userId = user.id;
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
@@ -395,6 +395,123 @@ async function startServer() {
 });
 app.get("/api/admin/test", requireAdmin, (req, res) => {
   res.json({ success: true, message: "Welcome admin" });
+});
+
+// Admin Analytics
+app.get("/api/admin/analytics", requireAdmin, (req, res) => {
+  const totalUsers = db.prepare("SELECT count(*) as count FROM users").get() as any;
+  const totalContent = db.prepare("SELECT count(*) as count FROM content").get() as any;
+  const totalViews = db.prepare("SELECT sum(views) as count FROM content").get() as any;
+  const pendingApprovals = db.prepare("SELECT count(*) as count FROM content WHERE status = 'pending'").get() as any;
+  const totalReports = db.prepare("SELECT count(*) as count FROM reports WHERE status = 'pending'").get() as any;
+
+  res.json({
+    users: totalUsers.count,
+    content: totalContent.count,
+    views: totalViews.count || 0,
+    pending: pendingApprovals.count,
+    reports: totalReports.count
+  });
+});
+
+// Admin User Management
+app.get("/api/admin/users", requireAdmin, (req, res) => {
+  const users = db.prepare("SELECT id, email, name, username, avatar, role, status, created_at FROM users ORDER BY created_at DESC").all();
+  res.json(users);
+});
+
+app.patch("/api/admin/users/:id/status", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // 'active', 'banned'
+  db.prepare("UPDATE users SET status = ? WHERE id = ?").run(status, id);
+  res.json({ success: true });
+});
+
+app.patch("/api/admin/users/:id/role", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body; // 'admin', 'user'
+  db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, id);
+  res.json({ success: true });
+});
+
+// Admin Content Management
+app.get("/api/admin/content", requireAdmin, (req, res) => {
+  const content = db.prepare("SELECT * FROM content ORDER BY created_at DESC").all();
+  res.json(content);
+});
+
+app.patch("/api/admin/content/:id/featured", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { isFeatured } = req.body;
+  db.prepare("UPDATE content SET is_featured = ? WHERE id = ?").run(isFeatured ? 1 : 0, id);
+  res.json({ success: true });
+});
+
+app.delete("/api/admin/content/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  db.prepare("DELETE FROM content WHERE id = ?").run(id);
+  db.prepare("DELETE FROM comments WHERE content_id = ?").run(id);
+  res.json({ success: true });
+});
+
+// Admin Reports
+app.get("/api/admin/reports", requireAdmin, (req, res) => {
+  const reports = db.prepare(`
+    SELECT r.*, u.name as reporter_name 
+    FROM reports r 
+    JOIN users u ON r.reporter_id = u.id 
+    ORDER BY r.created_at DESC
+  `).all();
+  res.json(reports);
+});
+
+app.patch("/api/admin/reports/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // 'resolved', 'dismissed'
+  db.prepare("UPDATE reports SET status = ? WHERE id = ?").run(status, id);
+  res.json({ success: true });
+});
+
+// Admin Message/Comment Management
+app.delete("/api/admin/comments/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  db.prepare("DELETE FROM comments WHERE id = ?").run(id);
+  res.json({ success: true });
+});
+
+app.delete("/api/admin/messages/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  db.prepare("DELETE FROM messages WHERE id = ?").run(id);
+  res.json({ success: true });
+});
+
+// Admin Settings
+app.get("/api/admin/settings", requireAdmin, (req, res) => {
+  const settings = db.prepare("SELECT * FROM app_settings").all();
+  const settingsObj = settings.reduce((acc: any, curr: any) => {
+    acc[curr.key] = curr.value;
+    return acc;
+  }, {});
+  res.json(settingsObj);
+});
+
+app.patch("/api/admin/settings", requireAdmin, (req, res) => {
+  const settings = req.body;
+  const upsert = db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)");
+  for (const [key, value] of Object.entries(settings)) {
+    upsert.run(key, value);
+  }
+  res.json({ success: true });
+});
+
+// User Reporting
+app.post("/api/reports", (req, res) => {
+  const userId = (req.session as any).userId;
+  if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+  const { targetType, targetId, reason } = req.body;
+  db.prepare("INSERT INTO reports (reporter_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)").run(userId, targetType, targetId, reason);
+  res.json({ success: true });
 });
 
   app.post("/api/user/update", (req, res) => {
@@ -620,6 +737,10 @@ app.get("/api/admin/test", requireAdmin, (req, res) => {
       const userInfo = await userInfoRes.json() as any;
 
       let user = db.prepare("SELECT * FROM users WHERE google_id = ? OR email = ?").get(userInfo.sub, userInfo.email) as any;
+
+      if (user && user.status === 'banned') {
+        return res.status(403).send('Your account has been banned.');
+      }
 
       const role = userInfo.email?.toLowerCase() === "bhilrahul976@gmail.com" ? "admin" : "user";
 

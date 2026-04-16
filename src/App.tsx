@@ -32,7 +32,8 @@ import {
   MessageCircle,
   Users,
   LogOut,
-  Camera
+  Camera,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -44,6 +45,7 @@ import { ChatRoom } from './components/ChatRoom';
 import { ExploreView } from './components/ExploreView';
 import { ProfileEditModal } from './components/ProfileEditModal';
 import { PrivateChat } from './components/PrivateChat';
+import { AdminDashboard } from './components/AdminDashboard';
 import { io } from 'socket.io-client';
 
 // --- Types ---
@@ -55,6 +57,7 @@ interface UserProfile {
   avatar?: string;
   bio?: string;
   favorite_deity?: string;
+  role?: 'admin' | 'user';
 }
 
 interface ContentItem {
@@ -637,6 +640,7 @@ export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isProfileEditOpen, setIsProfileEditOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activePrivateChat, setActivePrivateChat] = useState<any | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const socketRef = useRef<any>(null);
@@ -799,8 +803,30 @@ export default function App() {
       setHistory([]);
       setLiked([]);
       setWatchLater([]);
+      setUserContent([]);
+      setFriends([]);
+      setNotification({ message: 'Logged out successfully', type: 'info' });
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error(err);
+    }
+  };
+
+  const handleReport = async (targetType: string, targetId: number | string, reason: string) => {
+    if (!user) {
+      setIsLoginOpen(true);
+      return;
+    }
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetType, targetId, reason })
+      });
+      if (res.ok) {
+        setNotification({ message: 'Report submitted successfully', type: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -1042,6 +1068,15 @@ export default function App() {
                   >
                     <Share2 className="w-4 h-4" /> Share
                   </button>
+                  <button 
+                    onClick={() => {
+                      const reason = prompt("Why are you reporting this content?");
+                      if (reason) handleReport('content', selectedItem.id, reason);
+                    }}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-all text-xs font-bold"
+                  >
+                    <AlertTriangle className="w-4 h-4" /> Report
+                  </button>
                 </div>
               </div>
               <CommentSection contentId={selectedItem.id} user={user} />
@@ -1272,6 +1307,16 @@ export default function App() {
               {item.label}
             </button>
           ))}
+          
+          {user?.role === 'admin' && (
+            <button 
+              onClick={() => setIsAdminOpen(true)}
+              className="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-bhakti-accent hover:bg-bhakti-accent/10 transition-colors mt-4 border border-bhakti-accent/20"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              Admin Dashboard
+            </button>
+          )}
           <hr className="border-white/5 my-4" />
           <h3 className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Categories</h3>
           {[
@@ -1992,6 +2037,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+      <AdminDashboard isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
       <ChatBot />
     </div>
   );
