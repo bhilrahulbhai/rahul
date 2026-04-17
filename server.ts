@@ -9,6 +9,9 @@ import bcrypt from "bcryptjs";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import { OAuth2Client } from "google-auth-library";
+import SQLiteStoreFactory from "better-sqlite3-session-store";
+
+const SQLiteStore = SQLiteStoreFactory(session);
 import "dotenv/config";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -289,12 +292,20 @@ async function startServer() {
   app.use(express.json());
   app.use(cookieParser());
   app.use(session({
+    store: new SQLiteStore({
+      client: db,
+      expired: {
+        clear: true,
+        intervalMs: 900000 // 15min
+      }
+    }),
     secret: "bhakti-sacred-secret",
     resave: false,
     saveUninitialized: false,
     cookie: { 
       secure: true, 
       sameSite: 'none',
+      httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
   }));
@@ -376,6 +387,8 @@ async function startServer() {
 }
   app.get("/api/auth/me", (req, res) => {
     const userId = (req.session as any).userId;
+    console.log("Auth Check - Session ID:", req.sessionID, "User ID:", userId);
+    
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
     const user = db.prepare("SELECT id, email, name, username, avatar, bio, favorite_deity, role FROM users WHERE id = ?").get(userId);

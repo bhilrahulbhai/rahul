@@ -17,21 +17,26 @@ export async function getChatResponse(message: string, history: { role: 'user' |
   const ai = getAI();
   const model = "gemini-3-flash-preview";
 
-  const contents = [
-    ...history.map(m => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: m.parts
-    })),
-    { role: 'user', parts: [{ text: message }] }
-  ];
-  
-  const response = await ai.models.generateContent({
-    model: model,
-    config: {
-      systemInstruction: "You are BhaktiSagar AI, a helpful assistant for a devotional platform. You help users find bhajans, understand sacred stories, and explore spiritual content. Be respectful, calm, and knowledgeable about Indian spirituality and culture.",
-    },
-    contents: contents as any,
-  });
+  try {
+    const contents = [
+      ...history.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: m.parts
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+    
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: contents as any,
+      config: {
+        systemInstruction: "You are BhaktiSagar AI, a helpful assistant for a devotional platform. You help users find bhajans, understand sacred stories, and explore spiritual content. Be respectful, calm, and knowledgeable about Indian spirituality and culture.",
+      }
+    });
 
-  return response.text;
+    return response.text || "I am reflecting on your spiritual query...";
+  } catch (err) {
+    console.error("Gemini API Error Detail:", err);
+    throw err;
+  }
 }

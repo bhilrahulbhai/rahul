@@ -33,7 +33,9 @@ import {
   Users,
   LogOut,
   Camera,
-  AlertTriangle
+  AlertTriangle,
+  MoreVertical,
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -1000,144 +1002,93 @@ export default function App() {
   ];
 
   if (selectedItem) {
+    const isReel = selectedItem.type === 'reel';
     return (
-      <div className="min-h-screen bg-bhakti-bg flex flex-col">
-        <header className="h-16 border-b border-white/5 flex items-center px-4 gap-4">
-          <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-white/5 rounded-full">
+      <div className="min-h-screen bg-bhakti-bg flex flex-col fixed inset-0 z-[60] overflow-hidden animate-in fade-in zoom-in duration-300">
+        <header className="h-16 border-b border-white/5 flex items-center px-4 gap-4 bg-bhakti-card/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-[70]">
+          <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-white/10 rounded-full transition-all active:scale-95">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="font-bold text-lg truncate">{selectedItem.title}</h1>
+          <h1 className="font-bold text-lg truncate flex-1">{selectedItem.title}</h1>
+          <div className="flex items-center gap-3">
+            <button className="p-2.5 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+              <Share2 className="w-5 h-5 text-gray-300" />
+            </button>
+            <button className="p-2.5 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+              <MoreVertical className="w-5 h-5 text-gray-300" />
+            </button>
+          </div>
         </header>
-        <main className="flex-1 max-w-6xl mx-auto w-full p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className={cn(
-              "bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative",
-              selectedItem.type === 'reel' ? "aspect-[9/16] max-w-sm mx-auto" : "aspect-video"
-            )}>
-              {selectedItem.type === 'video' || selectedItem.type === 'reel' ? (
-                <BhaktiPlayer 
-                  id={selectedItem.id}
-                  url={selectedItem.url} 
-                  thumbnail={selectedItem.thumbnail} 
-                  type={selectedItem.type} 
-                />
-              ) : (
-                <img src={selectedItem.url} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-              )}
-            </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">{selectedItem.title}</h2>
-              {selectedItem.description && (
-                <p className="text-gray-400 text-sm leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
-                  {selectedItem.description}
-                </p>
-              )}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-bhakti-card rounded-3xl border border-white/5 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-bhakti-accent/20 flex items-center justify-center border border-bhakti-accent/10">
-                    <User className="w-6 h-6 text-bhakti-accent" />
+
+        <main className={cn(
+          "flex-1 w-full overflow-y-auto pt-16 scrollbar-hide bg-black/40",
+          isReel ? "flex flex-col items-center justify-center p-0" : "flex flex-col lg:flex-row items-stretch justify-center p-0 lg:p-12 gap-12"
+        )}>
+          <div className={cn(
+            "relative bg-black transition-all duration-700 ease-out flex items-center justify-center",
+            isReel 
+              ? "h-[calc(100vh-64px)] w-full max-w-[480px] aspect-[9/16] shadow-[0_0_120px_rgba(0,0,0,0.8)]" 
+              : "flex-1 max-w-5xl aspect-video lg:rounded-[40px] overflow-hidden border border-white/10 shadow-2xl"
+          )}>
+            <BhaktiPlayer 
+              id={selectedItem.id}
+              url={selectedItem.url} 
+              thumbnail={selectedItem.thumbnail} 
+              type={selectedItem.type as 'reel' | 'video'} 
+              authorName={selectedItem.author}
+              autoPlay={true}
+            />
+          </div>
+
+          {!isReel && (
+            <div className="flex-1 max-w-xl w-full mx-auto p-8 lg:p-0 space-y-8">
+              <div className="space-y-6">
+                <h2 className="text-4xl font-black text-white leading-tight tracking-tight">{selectedItem.title}</h2>
+                
+                <div className="flex items-center justify-between p-5 bg-bhakti-card rounded-[32px] border border-white/10 shadow-xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-bhakti-accent flex items-center justify-center text-xl font-bold shadow-lg shadow-bhakti-accent/20">
+                      {selectedItem.author[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-black text-lg">{selectedItem.author}</p>
+                      <p className="text-xs text-bhakti-accent font-bold uppercase tracking-widest">Verified Devotee</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-lg">{selectedItem.author}</p>
-                    <p className="text-xs text-gray-500 font-medium">Creator</p>
-                  </div>
+                  <button className="px-6 py-3 bg-bhakti-accent text-white font-black rounded-2xl hover:opacity-90 shadow-lg shadow-bhakti-accent/20 transition-all active:scale-95">
+                    Follow
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+
+                <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={() => toggleLike(selectedItem)}
                     className={cn(
-                      "flex items-center justify-center gap-2 px-4 py-3 rounded-2xl transition-all text-xs font-bold",
-                      liked.find(i => i.id === selectedItem.id) ? "bg-bhakti-accent text-white shadow-lg shadow-bhakti-accent/20" : "bg-white/5 hover:bg-white/10"
+                      "flex items-center justify-center gap-3 py-4 rounded-3xl transition-all font-bold text-sm",
+                      liked.find(i => i.id === selectedItem.id) ? "bg-bhakti-accent text-white" : "bg-white/5 hover:bg-white/10 border border-white/5"
                     )}
                   >
-                    <Heart className={cn("w-4 h-4", liked.find(i => i.id === selectedItem.id) && "fill-current")} /> 
-                    {liked.find(i => i.id === selectedItem.id) ? "Liked" : "Like"}
+                    <Heart className={cn("w-5 h-5", liked.find(i => i.id === selectedItem.id) && "fill-current")} />
+                    {selectedItem.likes} Likes
                   </button>
-                  <button 
-                    onClick={() => toggleWatchLater(selectedItem)}
-                    className={cn(
-                      "flex items-center justify-center gap-2 px-4 py-3 rounded-2xl transition-all text-xs font-bold",
-                      watchLater.find(i => i.id === selectedItem.id) ? "bg-bhakti-accent text-white shadow-lg shadow-bhakti-accent/20" : "bg-white/5 hover:bg-white/10"
-                    )}
-                  >
-                    <Clock className={cn("w-4 h-4", watchLater.find(i => i.id === selectedItem.id) && "fill-current")} /> 
-                    {watchLater.find(i => i.id === selectedItem.id) ? "Saved" : "Save"}
-                  </button>
-                  <button 
-                    onClick={() => shareToChat(selectedItem)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-all text-xs font-bold"
-                  >
-                    <MessageCircle className="w-4 h-4" /> Chat
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: selectedItem.title,
-                          text: selectedItem.description,
-                          url: window.location.href,
-                        });
-                      } else {
-                        setNotification({ message: "Sharing not supported on this browser.", type: 'error' });
-                      }
-                    }}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-all text-xs font-bold"
-                  >
-                    <Share2 className="w-4 h-4" /> Share
-                  </button>
-                  <button 
-                    onClick={() => {
-                      const reason = prompt("Why are you reporting this content?");
-                      if (reason) handleReport('content', selectedItem.id, reason);
-                    }}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-white/5 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-all text-xs font-bold"
-                  >
-                    <AlertTriangle className="w-4 h-4" /> Report
+                  <button className="flex items-center justify-center gap-3 py-4 rounded-3xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all font-bold text-sm">
+                    <Eye className="w-5 h-5" /> {selectedItem.views || 0} Views
                   </button>
                 </div>
-              </div>
-              <CommentSection contentId={selectedItem.id} user={user} />
-            </div>
-          </div>
-          <aside className="space-y-6">
-            <div className="bg-bhakti-card border border-white/10 rounded-3xl p-6 space-y-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-bhakti-accent" />
-                Suggested for you
-              </h3>
-              <div className="space-y-4">
-                {content
-                  .filter(i => i.id !== selectedItem.id && (i.type === 'video' || i.type === 'reel'))
-                  .slice(0, 6)
-                  .map(item => (
-                    <div 
-                      key={item.id} 
-                      onClick={() => handleSelectItem(item)} 
-                      className="flex gap-4 group cursor-pointer p-2 -m-2 rounded-2xl hover:bg-white/5 transition-colors"
-                    >
-                      <div className="w-28 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 relative">
-                        <img src={item.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
-                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Play className="w-4 h-4 text-white fill-current" />
-                        </div>
-                      </div>
-                      <div className="flex-1 py-0.5">
-                        <h4 className="text-xs font-bold line-clamp-2 group-hover:text-bhakti-accent transition-colors leading-snug">{item.title}</h4>
-                        <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
-                          <span className="w-1 h-1 rounded-full bg-bhakti-accent" />
-                          {item.author}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
 
-            {/* Spiritual Quote or Info */}
-            <div className="bg-gradient-to-br from-bhakti-accent/20 to-transparent border border-bhakti-accent/20 rounded-3xl p-6">
-              <p className="text-sm italic text-gray-300">"Devotion is not just a feeling, it is a state of being where the soul meets the divine."</p>
+                <div className="bg-white/5 p-6 rounded-[32px] border border-white/5 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-bhakti-accent" />
+                  <p className="text-gray-300 leading-relaxed text-lg italic pl-4">
+                    {selectedItem.description || "A divine contribution to the BhaktiSagar community."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <CommentSection contentId={selectedItem.id} user={user} />
+              </div>
             </div>
-          </aside>
+          )}
         </main>
         <ChatBot />
       </div>

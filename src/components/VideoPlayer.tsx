@@ -25,13 +25,17 @@ interface VideoPlayerProps {
   thumbnail: string;
   className?: string;
   autoPlay?: boolean;
+  type?: string;
+  authorName?: string;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
   url, 
   thumbnail, 
   className,
-  autoPlay = false 
+  autoPlay = false,
+  type = 'video',
+  authorName
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
@@ -46,9 +50,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [activeMenu, setActiveMenu] = useState<'main' | 'speed' | 'quality'>('main');
-  const [isLooping, setIsLooping] = useState(false);
+  const [isLooping, setIsLooping] = useState(type === 'reel');
   const [quality, setQuality] = useState('Auto');
   const [showCaptions, setShowCaptions] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  
+  // Unmute if user interacts
+  useEffect(() => {
+    if (isPlaying && !hasInteracted) {
+      // Default to unmuted once playback starts via user action
+      setIsMuted(false);
+      setVolume(1.0);
+      setHasInteracted(true);
+    }
+  }, [isPlaying, hasInteracted]);
   
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -204,14 +219,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       />
 
       {/* Overlay for clicks and double-clicks */}
-      <div className="absolute inset-0 z-0 flex">
+      <div className="absolute inset-0 z-0 flex" onClick={togglePlay}>
         <div 
           className="flex-1 h-full" 
           onDoubleClick={(e) => {
             e.stopPropagation();
             playerRef.current?.seekTo(currentTime - 10, 'seconds');
           }}
-          onClick={togglePlay}
         />
         <div 
           className="flex-1 h-full" 
@@ -219,9 +233,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             e.stopPropagation();
             playerRef.current?.seekTo(currentTime + 10, 'seconds');
           }}
-          onClick={togglePlay}
         />
       </div>
+
+      {type === 'reel' && (
+        <div className="absolute inset-x-0 bottom-0 p-4 pb-20 bg-gradient-to-t from-black/80 to-transparent pointer-events-none z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-bhakti-accent flex items-center justify-center font-bold border-2 border-white/20">
+              {authorName?.[0]?.toUpperCase() || 'B'}
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm">@{authorName || 'BhaktiSagar'}</p>
+              <button className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/80 mt-1 border border-white/10">Follow</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Controls */}
       <div className={cn(
