@@ -186,6 +186,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onBuffer={() => setIsLoading(true)}
         onBufferEnd={() => setIsLoading(false)}
         onReady={() => setIsLoading(false)}
+        onStart={() => setIsLoading(false)}
+        onPlay={() => setIsLoading(false)}
+        onError={() => {
+          console.error("Video playback error");
+          setIsLoading(false);
+        }}
         onEnded={() => !isLooping && setIsPlaying(false)}
         config={{
           youtube: {
