@@ -40,7 +40,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { cn } from './lib/utils';
-import { getChatResponse } from './services/gemini';
+
 import { LoginModal } from './components/LoginModal';
 import { BhaktiPlayer } from './components/BhaktiPlayer';
 import { ChatRoom } from './components/ChatRoom';
@@ -92,28 +92,50 @@ const ChatBot = () => {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  if (!input.trim() || isLoading) return;
 
-    const userMsg = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setIsLoading(true);
+  const userMsg = input.trim();
+  setInput('');
+  setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+  setIsLoading(true);
 
-    try {
-      const history = messages.map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }]
-      }));
-      
-      const response = await getChatResponse(userMsg, history);
-      setMessages(prev => [...prev, { role: 'model', text: response || 'Sorry, I could not process that.' }]);
-    } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: 'model', text: 'Error connecting to the spiritual realm. Please try again.' }]);
-    } finally {
-      setIsLoading(false);
+  try {
+    const history = messages.map(m => ({
+      role: m.role,
+      parts: [{ text: m.text }]
+    }));
+
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: userMsg,
+        history,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Chat request failed");
     }
-  };
+
+    setMessages(prev => [
+      ...prev,
+      { role: 'model', text: data.reply || 'Sorry, I could not process that.' }
+    ]);
+  } catch (error) {
+    console.error(error);
+    setMessages(prev => [
+      ...prev,
+      { role: 'model', text: 'Error connecting to the spiritual realm. Please try again.' }
+    ]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <>
