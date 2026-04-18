@@ -314,26 +314,10 @@ const UploadModal = ({ isOpen, onClose, onUpload, user }: { isOpen: boolean, onC
     }
   }, [user]);
 
-  useEffect(() => {
-    if (formData.url && (formData.url.includes('youtube.com') || formData.url.includes('youtu.be'))) {
-      let videoId = '';
-      if (formData.url.includes('v=')) {
-        videoId = formData.url.split('v=')[1].split('&')[0];
-      } else if (formData.url.includes('youtu.be/')) {
-        videoId = formData.url.split('youtu.be/')[1].split('?')[0];
-      } else if (formData.url.includes('embed/')) {
-        videoId = formData.url.split('embed/')[1].split('?')[0];
-      }
-      
-      if (videoId && !formData.thumbnail) {
-        setFormData(prev => ({ ...prev, thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }));
-      }
-    }
-  }, [formData.url]);
   const [isUploading, setIsUploading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [uploadMode, setUploadMode] = useState<'url' | 'file'>('url');
-  const [thumbUploadMode, setThumbUploadMode] = useState<'url' | 'file'>('url');
+  const [uploadMode, setUploadMode] = useState<'url' | 'file'>('file');
+  const [thumbUploadMode, setThumbUploadMode] = useState<'url' | 'file'>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedThumbFile, setSelectedThumbFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -400,8 +384,8 @@ const UploadModal = ({ isOpen, onClose, onUpload, user }: { isOpen: boolean, onC
           setFormData({ title: '', description: '', type: 'video', url: '', thumbnail: '', author: user?.name || 'User' });
           setSelectedFile(null);
           setSelectedThumbFile(null);
-          setUploadMode('url');
-          setThumbUploadMode('url');
+          setUploadMode('file');
+          setThumbUploadMode('file');
         }, 3000);
       }
     } catch (err) {
@@ -424,7 +408,7 @@ const UploadModal = ({ isOpen, onClose, onUpload, user }: { isOpen: boolean, onC
             <div className="p-8 border-b border-white/10 flex items-center justify-between bg-white/5">
               <div>
                 <h3 className="text-2xl font-bold">Share Your Devotion</h3>
-                <p className="text-sm text-gray-400 mt-1">Upload YouTube links or your own spiritual content</p>
+                <p className="text-sm text-gray-400 mt-1">Upload your own spiritual content to the community</p>
               </div>
               <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-full transition-colors">
                 <X className="w-6 h-6" />
@@ -494,117 +478,52 @@ const UploadModal = ({ isOpen, onClose, onUpload, user }: { isOpen: boolean, onC
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            {uploadMode === 'url' ? (formData.type === 'video' ? 'YouTube Link' : 'Content URL') : 'Upload File'}
+                            Upload File
                           </label>
-                          <div className="flex bg-white/5 rounded-lg p-1">
-                            <button
-                              type="button"
-                              onClick={() => setUploadMode('url')}
-                              className={cn(
-                                "px-2 py-1 text-[10px] rounded-md transition-all",
-                                uploadMode === 'url' ? "bg-bhakti-accent text-white" : "text-gray-500"
-                              )}
-                            >
-                              URL
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setUploadMode('file')}
-                              className={cn(
-                                "px-2 py-1 text-[10px] rounded-md transition-all",
-                                uploadMode === 'file' ? "bg-bhakti-accent text-white" : "text-gray-500"
-                              )}
-                            >
-                              FILE
-                            </button>
-                          </div>
                         </div>
 
-                        {uploadMode === 'url' ? (
+                        <div 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full bg-white/5 border border-dashed border-white/20 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/10 transition-all"
+                        >
                           <input
-                            required
-                            value={formData.url}
-                            onChange={e => setFormData({ ...formData, url: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 focus:outline-none focus:border-bhakti-accent transition-colors"
-                            placeholder={formData.type === 'video' || formData.type === 'reel' ? "Video URL (YouTube or Direct MP4)..." : "Content URL..."}
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept={formData.type === 'photo' ? 'image/*' : (formData.type === 'video' || formData.type === 'reel' ? 'video/*' : '*')}
                           />
-                        ) : (
-                          <div 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="w-full bg-white/5 border border-dashed border-white/20 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/10 transition-all"
-                          >
-                            <input
-                              type="file"
-                              ref={fileInputRef}
-                              onChange={handleFileChange}
-                              className="hidden"
-                              accept={formData.type === 'photo' ? 'image/*' : (formData.type === 'video' || formData.type === 'reel' ? 'video/*' : '*')}
-                            />
-                            <div className="w-12 h-12 rounded-full bg-bhakti-accent/10 flex items-center justify-center">
-                              <Upload className="w-6 h-6 text-bhakti-accent" />
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm font-medium">{selectedFile ? selectedFile.name : 'Click to upload file'}</p>
-                              <p className="text-xs text-gray-500 mt-1">Max size: 1GB</p>
-                            </div>
+                          <div className="w-12 h-12 rounded-full bg-bhakti-accent/10 flex items-center justify-center">
+                            <Upload className="w-6 h-6 text-bhakti-accent" />
                           </div>
-                        )}
+                          <div className="text-center">
+                            <p className="text-sm font-medium">{selectedFile ? selectedFile.name : 'Click to select content'}</p>
+                            <p className="text-xs text-gray-500 mt-1">Max size: 1GB</p>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Thumbnail (Optional)</label>
-                          <div className="flex bg-white/5 rounded-lg p-1">
-                            <button
-                              type="button"
-                              onClick={() => setThumbUploadMode('url')}
-                              className={cn(
-                                "px-2 py-1 text-[10px] rounded-md transition-all",
-                                thumbUploadMode === 'url' ? "bg-bhakti-accent text-white" : "text-gray-500"
-                              )}
-                            >
-                              URL
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setThumbUploadMode('file')}
-                              className={cn(
-                                "px-2 py-1 text-[10px] rounded-md transition-all",
-                                thumbUploadMode === 'file' ? "bg-bhakti-accent text-white" : "text-gray-500"
-                              )}
-                            >
-                              FILE
-                            </button>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Thumbnail (Optional Upload)</label>
+
+                        <div 
+                          onClick={() => thumbFileInputRef.current?.click()}
+                          className="w-full bg-white/5 border border-dashed border-white/20 rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all"
+                        >
+                          <input
+                            type="file"
+                            ref={thumbFileInputRef}
+                            onChange={handleThumbFileChange}
+                            className="hidden"
+                            accept="image/*"
+                          />
+                          <div className="w-10 h-10 rounded-full bg-bhakti-accent/10 flex items-center justify-center shrink-0">
+                            <ImageIcon className="w-5 h-5 text-bhakti-accent" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{selectedThumbFile ? selectedThumbFile.name : 'Choose thumbnail'}</p>
                           </div>
                         </div>
-
-                        {thumbUploadMode === 'url' ? (
-                          <input
-                            value={formData.thumbnail}
-                            onChange={e => setFormData({ ...formData, thumbnail: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 focus:outline-none focus:border-bhakti-accent transition-colors"
-                            placeholder="Link to a preview image..."
-                          />
-                        ) : (
-                          <div 
-                            onClick={() => thumbFileInputRef.current?.click()}
-                            className="w-full bg-white/5 border border-dashed border-white/20 rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-all"
-                          >
-                            <input
-                              type="file"
-                              ref={thumbFileInputRef}
-                              onChange={handleThumbFileChange}
-                              className="hidden"
-                              accept="image/*"
-                            />
-                            <div className="w-10 h-10 rounded-full bg-bhakti-accent/10 flex items-center justify-center shrink-0">
-                              <ImageIcon className="w-5 h-5 text-bhakti-accent" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{selectedThumbFile ? selectedThumbFile.name : 'Choose thumbnail'}</p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

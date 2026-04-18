@@ -4,9 +4,15 @@ let aiInstance: GoogleGenAI | null = null;
 
 function getAI() {
   if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    // In some production builds, process.env might not be available directly in the browser.
+    // We try to access the key from common locations.
+    const apiKey = (import.meta as any).env?.GEMINI_API_KEY || 
+                   (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
+                   (globalThis as any).GEMINI_API_KEY;
+
     if (!apiKey) {
-      throw new Error("Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your environment variables.");
+      console.error("BhaktiSagar AI: Gemini API Key is missing.");
+      throw new Error("Devotional AI connection failed: Spiritual key (API Key) not found. Please ensure GEMINI_API_KEY is configured in your deployment settings.");
     }
     aiInstance = new GoogleGenAI({ apiKey });
   }

@@ -209,6 +209,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }}
         onEnded={() => !isLooping && setIsPlaying(false)}
         config={{
+          file: {
+            attributes: {
+              preload: 'auto',
+              controlsList: 'nodownload'
+            }
+          },
           youtube: {
             rel: 0,
             iv_load_policy: showCaptions ? 1 : 3,
